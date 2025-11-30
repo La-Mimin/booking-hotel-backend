@@ -15,10 +15,10 @@ class ReservationController extends Controller
      */
     public function store(Request $request)
     {
-        $request->valdate([
-            'room_id' => 'require|exist:room_id',
-            'check_in' => 'require|date',
-            'check_out' => 'require|date|after:check_in'
+        $request->validate([
+            'room_id' => 'required|exists:rooms,id',
+            'check_in' => 'required|date',
+            'check_out' => 'required|date|after:check_in'
         ]);
 
         $room = Room::find($request->room_id);
@@ -33,11 +33,10 @@ class ReservationController extends Controller
 
         // buat reservasi
         $reservation = Reservation::create([
-            'user_id' => Auth::id(),
+            'user_id' => auth()->id(),
             'room_id' => $room->id,
             'check_in' => $request->check_in,
-            'check_out'
-             => $request->check_out,
+            'check_out' => $request->check_out,
             'total_price' => $total,
             'status' => 'pending'
         ]);
@@ -56,7 +55,7 @@ class ReservationController extends Controller
      */
     public function index()
     {
-        return Reservation::with('room')->where('user_id', Auth::id())->get();
+        return Reservation::with('room')->where('user_id', auth()->id())->get();
     }
 
     // ADMIN - lihat semua reservasi

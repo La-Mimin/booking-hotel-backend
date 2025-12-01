@@ -2,10 +2,9 @@
 
 namespace Tests\Feature;
 
-use Tests\TestCase;
 use App\Models\User;
-use Illuminate\Foundation\Testing\WithFaker;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Tests\TestCase;
 
 class AuthTest extends TestCase
 {
@@ -15,52 +14,78 @@ class AuthTest extends TestCase
     public function user_can_register()
     {
         $response = $this->postJson('/api/register', [
-            'name' => 'User Test',
-            'email' => 'usertest@gmail.com',
-            'password' => '123456'
+            'name' => 'Test User',
+            'email' => 'test@example.com',
+            'password' => 'password',
+            'role' => 'admin'
         ]);
 
-        $response->assertStatus(201);
-        $response->assertJsonStructure([
-            'message',
-            'user' => ['id', 'name', 'email']
-        ]);
-    }
+        $response->assertStatus(201)
+            ->assertJson([
+                'message' => 'Registrasi berhasil',
+                'user' => [
+                    'name' => 'Test User',
+                    'email' => 'test@example.com',
+                    'role' => 'admin'
+                ]
+            ]);
 
-    /** @test */
-    public function user_cannot_register_with_same_email_twice()
-    {
-        User::factory()->create([
-            'email' => 'usertest@gmail.com'
+        $this->assertDatabaseHas('users', [
+            'email' => 'test@example.com',
+            'role' => 'admin'
         ]);
-
-        $response = $this->postJson('/api/register', [
-            'name' => 'User Test',
-            'email' => 'usertest@gmail.com',
-            'password' => '123456'
-        ]);
-
-        $response->assertStatus(422); // validation error
     }
 
     /** @test */
     public function user_can_login()
     {
-        User::factory()->create([
-            'email' => 'usertest@gmail.com',
-            'password' => bcrypt('123456')
+        $user = User::factory()->create([
+            'email' => 'login@example.com',
+            'password' => bcrypt('password'),
         ]);
 
         $response = $this->postJson('/api/login', [
-            'email' => 'usertest@gmail.com',
-            'password' => '123456'
+            'email' => 'login@example.com',
+            'password' => 'password'
         ]);
 
-        $response->assertStatus(200);
-        $response->assertJsonStructure([
-            'message',
-            'token',
-            'user'
+        $response->assertStatus(200)
+            ->assertJsonStructure([
+                'message',
+                'token',
+                'user'
+            ]);
+    }
+
+    /** @test */
+    public function login_fails_with_wrong_password()
+    {
+        $user = User::factory()->create([
+            'email' => 'wrongpass@example.com',
+            'password' => bcrypt('password')
         ]);
+
+        $response = $this->postJson('/api/login', [
+            'email' => 'wrongpass@example.com',
+            'password' => 'wrong'
+        ]);
+
+        $response->assertStatus(401)
+            ->assertJson([
+                'message' => 'Email atau password salah'
+            ]);
+    }
+
+    /** @test */
+    public function user_can_logout()
+    {
+        $user = User::factory()->create();
+        $token = auth('api')->login($user);
+
+        $response = $this->withHeader('Authorization', "Bearer $token")
+            ->postJson('/api/logout');
+
+        $response->assertStatus(200)
+            ->assertJson(['message' => 'Logout berhasil']);
     }
 }

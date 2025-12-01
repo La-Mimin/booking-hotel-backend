@@ -63,20 +63,28 @@ class ReservationController extends Controller
         return Reservation::with(['room', 'user'])->get();
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    // USER lihat booking miliknya
+    public function myBooking()
     {
-        //
+        $bookings = Reservation::where('user_id', Auth::id())->with('room')->get();
+        return response()->json($bookings);
     }
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
+    // ADMIN & STAFF update status booking
+    public function updateStatus(Request $request, $id)
     {
-        //
+        $booking = Reservation::findOrFail($id);
+
+        $request->validate([
+            'status' => 'required|in:approved,rejected'
+        ]);
+
+        $booking->update(['status' => $request->status]);
+
+        return response()->json([
+            'message' => 'Status booking diperbarui',
+            'data' => $booking
+        ]);
     }
 
     /**

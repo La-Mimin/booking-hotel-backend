@@ -27,12 +27,6 @@ Route::middleware('auth:api')->group(function () {
 | (route controller UserController nanti kita buat)
 */
 Route::middleware(['auth:api', 'role:admin'])->group(function () {
-    Route::get('/admin/users', [UserController::class, 'index']);
-    Route::post('/admin/staff', [UserController::class, 'storeStaff']);
-    Route::put('/admin/user/{id}', [UserController::class, 'update']);
-    Route::delete('/admin/user/{id}', [UserController::class, 'destroy']);
-});
-Route::middleware(['auth:api', 'role:admin'])->group(function () {
     // untuk manajemen akun (staff)
     Route::get('/admin/users', [UserController::class, 'index']);
     Route::post('/admin/staff', [UserController::class, 'storeStaff']);
@@ -51,8 +45,8 @@ Route::middleware(['auth:api', 'role:admin'])->group(function () {
 */
 Route::middleware(['auth:api', 'role:admin,staff'])->group(function () {
     Route::apiResource('/rooms', RoomController::class);
-    Route::apiResource('/reservations', ReservationController::class)
-        ->only(['index', 'store', 'update', 'destroy']);
+    Route::get('/bookings', [ReservationController::class, 'index']);
+    Route::put('/booking/status/{id}', [ReservationController::class, 'updateStatus']);
 });
 
 /*
@@ -63,5 +57,5 @@ Route::middleware(['auth:api', 'role:admin,staff'])->group(function () {
 */
 Route::middleware(['auth:api', 'role:user'])->group(function () {
     Route::post('/book', [ReservationController::class, 'store']); // booking kamar
-    Route::get('/my-bookings', [ReservationController::class, 'index']); // hanya booking miliknya
+    Route::get('/my-bookings', [ReservationController::class, 'myBooking']); // hanya booking miliknya
 });

@@ -4,6 +4,8 @@ namespace Tests\Feature;
 
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\WithFaker;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class RoomTest extends TestCase
@@ -50,6 +52,26 @@ class RoomTest extends TestCase
 
         $create->assertStatus(201);
         $roomId = $create->json('id');
+
+        // Upload image to room
+        Storage::fake('public');
+
+        $image = UploadedFile::fake()->image('room.jpg');
+
+        $upload = $this->postJson('/api/rooms', [
+            'name' => 'Room with Image',
+            'description' => 'With image upload',
+            'price' => 700000,
+            'stock' => 4,
+            'image' => $image,
+        ], [
+            'Authorization' => "Bearer $token"
+        ]);
+
+        $upload->assertStatus(201);
+        $this->assertNotNull($upload->json('image')); // path tersimpan
+        $this->assertNotNull($upload->json('image_url')); // URL tersedia
+        Storage::disk('public')->assertExists($upload->json('image'));
 
         // 4. Read room (GET)
         $read = $this->getJson("/api/rooms/$roomId", [

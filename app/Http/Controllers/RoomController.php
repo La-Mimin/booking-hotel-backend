@@ -24,9 +24,17 @@ class RoomController extends Controller
             'name' => 'required',
             'price' => 'required|integer',
             'stock' => 'required|integer',
+            'image' => 'nullable|image|max:2048'
         ]);
 
-        $room = Room::create($request->all());
+        $data = $request->all();
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('rooms', 'public');
+            $data['image'] = $path;
+        }
+
+        $room = Room::create($data);
         return response()->json($room, 201);
     }
 
@@ -43,8 +51,20 @@ class RoomController extends Controller
      */
     public function update(Request $request, string $id)
     {
+        $request->validate([
+            'image' => 'nullable|image|max:2048'
+        ]);
+
         $room = Room::findOrFail($id);
-        $room->update($request->all());
+
+        $data = $request->all();
+
+        if ($request->hasFile('image')) {
+            $path = $request->file('image')->store('rooms', 'public');
+            $data['image'] = $path;
+        }
+
+        $room->update($data);
         return response()->json($room);
     }
 

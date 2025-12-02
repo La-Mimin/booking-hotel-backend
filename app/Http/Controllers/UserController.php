@@ -7,6 +7,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
+use Intervention\Image\Facades\Image;
 
 class UserController extends Controller
 {
@@ -43,7 +44,17 @@ class UserController extends Controller
         $data['role'] = 'staff';
 
         if ($request->hasFile('profile_image')) {
-            $path = $request->file('profile_image')->store('avatars', 'public');
+            $file = $request->file('profile_image');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
+
+            $image = Image::read($file);
+
+            // Resize (square 300x300) & compress
+            $image->resize(300, 300)->toJpeg(80);
+
+            $path = 'avatars/' . $filename;
+            Storage::disk('public')->put($path, (string) $image->encode());
+
             $data['profile_image'] = $path;
         }
 
@@ -76,14 +87,17 @@ class UserController extends Controller
         }
 
         if ($request->hasFile('profile_image')) {
+            $file = $request->file('profile_image');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
 
-            // hapus avatar lama jika ada
-            if ($user->profile_image) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
+            $image = Image::read($file);
 
-            // upload avatar baru
-            $path = $request->file('profile_image')->store('avatars', 'public');
+            // Resize (square 300x300) & compress
+            $image->resize(300, 300)->toJpeg(80);
+
+            $path = 'avatars/' . $filename;
+            Storage::disk('public')->put($path, (string) $image->encode());
+
             $data['profile_image'] = $path;
         }
 
@@ -115,11 +129,17 @@ class UserController extends Controller
         }
 
         if ($request->hasFile('profile_image')) {
-            if ($user->profile_image) {
-                Storage::disk('public')->delete($user->profile_image);
-            }
+            $file = $request->file('profile_image');
+            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
 
-            $path = $request->file('profile_image')->store('avatars', 'public');
+            $image = Image::read($file);
+
+            // Resize (square 300x300) & compress
+            $image->resize(300, 300)->toJpeg(80);
+
+            $path = 'avatars/' . $filename;
+            Storage::disk('public')->put($path, (string) $image->encode());
+
             $data['profile_image'] = $path;
         }
 

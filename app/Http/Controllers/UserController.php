@@ -7,7 +7,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Facades\Image;
+use Intervention\Image\ImageManager;
+use Intervention\Image\Drivers\Gd\Driver;
 
 class UserController extends Controller
 {
@@ -142,14 +143,14 @@ class UserController extends Controller
             Storage::delete($user->profile_image);
         }
 
-        $image = $request->file('profile_image');
+        $manager = new ImageManager(new Driver());
+
+        $image = $manager->read($request->file('profile_image'));
+        $image->cover(300,300);
+
         $filename = 'profile_image/' . uniqid() . '.jpg';
 
-        $resized = Image::make($image)
-            ->fit(300, 300)
-            ->encode('jpg', 90);
-
-        Storage::put($filename, $resized);
+        Storage::put($filename, $image->toJpeg(90));
 
         $user->update(['profile_image' => $filename]);
 

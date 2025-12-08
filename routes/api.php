@@ -11,10 +11,10 @@ use App\Http\Controllers\ReservationController;
 Route::middleware(['throttle:60,1'])->group(function () {
     Route::post('/register', [AuthController::class, 'register']);
     Route::post('/login', [AuthController::class, 'login']);
+    Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
+    Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 });
 
-Route::post('/forgot-password', [AuthController::class, 'forgotPassword']);
-Route::post('/reset-password', [AuthController::class, 'resetPassword']);
 Route::post('/verify-email', [AuthController::class, 'verifyEmail']);
 Route::post('resend-verification', [AuthController::class, 'resendVerification']);
 
@@ -28,7 +28,7 @@ Route::get('/public/rooms', [RoomController::class, 'publicIndex']);
 Route::get('public/rooms/{id}', [RoomController::class, 'show']);
 
 
-// Auth All Roles
+// All Roles
 Route::middleware(['auth:api', 'jwt.refresh'])->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
     Route::post('/refresh', [AuthController::class, 'refresh']);
@@ -36,6 +36,7 @@ Route::middleware(['auth:api', 'jwt.refresh'])->group(function () {
     // universal untuk semua role
     Route::get('/profile', [UserController::class, 'profile']);
     Route::put('/profile', [UserController::class, 'updateProfile']);
+    Route::post('/profile/avatar', [UserController::class, 'uploadAvatar']);
 });
 
 

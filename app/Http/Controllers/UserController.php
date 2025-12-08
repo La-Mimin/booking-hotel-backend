@@ -11,11 +11,6 @@ use Intervention\Image\Facades\Image;
 
 class UserController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth:api');
-        $this->middleware('role:admin')->only(['storeStaff', 'update', 'destroy', 'index']);
-    }
 
     public function index() {
         return response()->json([
@@ -24,135 +19,56 @@ class UserController extends Controller
         ]);
     }
 
-    public function profile()
-    {
-        return $this->success('Profile fetched successfully', $this->formatUserResponse(auth()->user()));
-
-    }
-
-    // admin Add user
+    // admin Create staff
     public function storeStaff(Request $request) {
         $request->validate([
             'name' => 'required|string',
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:6',
-            'profile_image' => 'nullable|image|max:3048'
         ]);
 
-        $data = $request->only(['name', 'email']);
-        $data['password'] = Hash::make($request->password);
-        $data['role'] = 'staff';
-
-        if ($request->hasFile('profile_image')) {
-            $file = $request->file('profile_image');
-            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
-
-            $image = Image::read($file);
-
-            // Resize (square 300x300) & compress
-            $image->resize(300, 300)->toJpeg(80);
-
-            $path = 'avatars/' . $filename;
-            Storage::disk('public')->put($path, (string) $image->encode());
-
-            $data['profile_image'] = $path;
-        }
-
-        $staff = User::create($data);
-
-        return $this->success(
-            'Staff created successfully',
-            $this->formatUserResponse($staff),
-            201
-        );
-    }
-
-    // Update role, avatar atau data user (admin)
-    public function update(Request $request, $id)
-    {
-        $user = User::findOrFail($id);
-
-        $request->validate([
-            'name'  => 'nullable',
-            'email' => 'nullable|email|unique:users,email,' . $id,
-            'role'  => 'nullable|in:admin,staff,user',
-            'profile_image' => 'nullable|image|max:3048',
-            'password' => 'nullable|min:6',
+        $user = User::create([
+            'name' => $request->name,
+            'email' => $request->email,
+            'password' => Hash::make($request->password),
+            'role' => 'staff',
+            'email_verified_at' => now()
         ]);
-
-        $data = $request->only(['name', 'email', 'role']);
-
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        }
-
-        if ($request->hasFile('profile_image')) {
-            $file = $request->file('profile_image');
-            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
-
-            $image = Image::read($file);
-
-            // Resize (square 300x300) & compress
-            $image->resize(300, 300)->toJpeg(80);
-
-            $path = 'avatars/' . $filename;
-            Storage::disk('public')->put($path, (string) $image->encode());
-
-            $data['profile_image'] = $path;
-        }
-
-        $user->update($data);
-
-        return $this->success(
-            'User updated successfully',
-            $this->formatUserResponse($user)
-        );
-
-    }
-
-    // user dan staff update profile
-    public function updateProfile(Request $request)
-    {
-        $user = auth()->user();
-
-        $request->validate([
-            'name'  => 'nullable',
-            'email' => 'nullable|email|unique:users,email,' . $user->id,
-            'password' => 'nullable|min:6',
-            'profile_image' => 'nullable|image|max:3048'
-        ]);
-
-        $data = $request->only(['name', 'email']);
-
-        if ($request->filled('password')) {
-            $data['password'] = Hash::make($request->password);
-        }
-
-        if ($request->hasFile('profile_image')) {
-            $file = $request->file('profile_image');
-            $filename = uniqid() . '.' . $file->getClientOriginalExtension();
-
-            $image = Image::read($file);
-
-            // Resize (square 300x300) & compress
-            $image->resize(300, 300)->toJpeg(80);
-
-            $path = 'avatars/' . $filename;
-            Storage::disk('public')->put($path, (string) $image->encode());
-
-            $data['profile_image'] = $path;
-        }
-
-        $user->update($data);
 
         return response()->json([
             'success' => true,
-            'message' => 'Profile updated successfully',
+            'message' => 'staff berhasil ditambahkan',
             'data' => $this->formatUserResponse($user)
+        ], 201);
+
+    }
+
+
+    // Admin update user
+    public function update(Request $request, $id) {
+        $user = User::findOrFail($id);
+
+        $request->validate([
+            'name' => 'nullable|string',
+            'email' => 'nullable|email|unique:users,email,' . $id,
+            'role' => 'nullable|in:admin,staff,user',
+            'password' => 'nullable|min:6',
+        ]);
+
+        $user->update([
+            'name' => $request->name,
+            'email' => $request->email,
+            'role' => $request->role,
+            'password' => $request->password ? Hash::make($request->password) : $user->password
+        ]);
+
+        return response()->json([
+            'message' => 'User berhasil ditambahkan'
         ]);
     }
 
-    // Hapus user (admin)
+
+    // Admin hapus user
     public function destroy($id)
     {
         $user = User::findOrFail($id);
@@ -173,8 +89,77 @@ class UserController extends Controller
         }
 
         $user->delete();
-        return response()->json(['message' => 'User deleted successfully']);
+        return response()->json(['message' => 'User dberhasil dihapus']);
     }
+
+
+    // All roles get profile
+    public function profile() {
+        $user = auth()->user();
+        return response()->json([
+            'success' => true,
+            'data' => $this->formatUserResponse($user)
+        ]);
+    }
+
+
+    // user dan staff update profile
+    public function updateProfile(Request $request)
+    {
+        $user = auth()->user();
+
+        $request->validate([
+            'name'  => 'nullable',
+            'email' => 'nullable|email|unique:users,email,' . $user->id,
+            'password' => 'nullable|min:6',
+        ]);
+
+        $data = $request->only(['name', 'email']);
+
+        if ($request->filled('password')) {
+            $data['password'] = Hash::make($request->password);
+        }
+
+        $user->update($data);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Profile updated successfully',
+            'data' => $this->formatUserResponse($user)
+        ]);
+    }
+
+    // All roles upload avatar
+    public function uploadAvatar(Request $request) {
+        $request->validate([
+            'profile_image' => 'required|image|mimes:jpeg,jpg,png,svg|max:2548',
+        ]);
+
+        $user = auth()->user();
+
+        // Hapus avatar lama jikan ada
+        if ($user->profile_image && Storage::exist($user->profile_image)) {
+            Storage::delete($user->profile_image);
+        }
+
+        $image = $request->file('profile_image');
+        $filename = 'profile_image/' . uniqid() . '.jpg';
+
+        $resized = Image::make($image)
+            ->fit(300, 300)
+            ->encode('jpg', 90);
+
+        Storage::put($filename, $resized);
+
+        $user->update(['profile_image' => $filename]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Berhasil upload avatar',
+            'avatar' => $filename
+        ]);
+    }
+
 
     private function formatUserResponse(User $user)
     {
@@ -190,20 +175,4 @@ class UserController extends Controller
             'created_at' => $user->created_at,
         ];
     }
-
-    private function success($message, $data = null, $status = 200)
-    {
-        return response()->json([
-            'success' => true,
-            'message' => $message,
-            'data' => $data
-        ], $status);
-    }
-
-    private function error($message, $status = 400)
-    {
-        return $this->success('User deleted successfully');
-
-    }
-
 }

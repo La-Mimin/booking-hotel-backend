@@ -15,7 +15,10 @@ class Reservation extends Model
         'check_in',
         'check_out',
         'total_price',
-        'status'
+        'status',
+        'payment_status',
+        'transaction_id',
+        'payment_url'
     ];
 
     public function room() {

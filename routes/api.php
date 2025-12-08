@@ -20,12 +20,12 @@ Route::post('resend-verification', [AuthController::class, 'resendVerification']
 
 
 // Payment Callback
-Route::post('/payment/callback', [ReservationController::class, 'callback']);
+Route::post('/payment/callback', [ReservationController::class, 'callback'])->middleware('midtrans.verify');
 
 
 // Public Can See All Room Listing
 Route::get('/public/rooms', [RoomController::class, 'publicIndex']);
-Route::get('public/rooms/{id}', [RoomController::class, 'show']);
+Route::get('/public/rooms/{id}', [RoomController::class, 'show']);
 
 
 // All Roles
@@ -45,7 +45,7 @@ Route::middleware(['auth:api', 'jwt.refresh', 'role:user'])->group(function () {
     Route::post('/book', [ReservationController::class, 'store']);
     Route::get('/my-bookings', [ReservationController::class, 'myBooking']);
     Route::get('/my-bookings/{id}', [ReservationController::class, 'show']);
-    Route::delete('my-bookings/{id}', [ReservationController::class, 'cancel']);
+    Route::delete('/my-bookings/{id}', [ReservationController::class, 'cancel']);
 });
 
 
@@ -57,7 +57,7 @@ Route::middleware(['auth:api', 'jwt.refresh', 'role:admin,staff'])->group(functi
 
     // Bookings Management
     Route::get('/bookings', [ReservationController::class, 'index']);
-    Route::get('.bookings/{id}', [ReservationController::class, 'show']);
+    Route::get('/bookings/{id}', [ReservationController::class, 'show']);
     Route::put('/bookings/{id}', [ReservationController::class, 'updateStatus']);
 });
 
@@ -74,6 +74,6 @@ Route::middleware(['auth:api', 'jwt.refresh', 'role:admin'])->group(function () 
     // Reservations
     Route::get('/admin/reservations', [ReservationController::class, 'all']);
 
-    // Dashborad Stats
+    // Dashboard Stats
     Route::get('/admin/stats', [ReservationController::class, 'stats']);
 });

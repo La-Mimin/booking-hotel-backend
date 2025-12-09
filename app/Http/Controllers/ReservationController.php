@@ -5,94 +5,40 @@ namespace App\Http\Controllers;
 use App\Models\Room;
 use App\Models\Reservation;
 use Illuminate\Http\Request;
+use App\Http\Requests\ReservationRequest;
+use App\Http\Resources\ReservationResource;
+use App\Services\ReservationService;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
 class ReservationController extends Controller
 {
+    protected $reservationService;
+
+    public function __construct(ReservationService $reservationService)
+    {
+        $this->reservationService = $reservationService;
+    }
     /*
     |--------------------------------------------------------------------------
     | USER - CREATE BOOKING + MIDTRANS
     |--------------------------------------------------------------------------
     */
-    public function store(Request $request)
+    public function store(ReservationRequest $request)
     {
-        $request->validate([
-            'room_id'   => 'required|exists:rooms,id',
-            'check_in'  => 'required|date',
-            'check_out' => 'required|date|after:check_in'
-        ]);
-
-        DB::beginTransaction();
-
         try {
-            $room = Room::lockForUpdate()->findOrFail($request->room_id);
+            $reservation = $this->reservationService->createReservation($request->validated(), auth()->id());
 
-            if ($room->stock <= 0) {
-                return response()->json(['message' => 'Kamar tidak tersedia'], 400);
-            }
-
-            $days = (strtotime($request->check_out) - strtotime($request->check_in)) / 86400;
-            $total = $days * $room->price;
-
-            $orderId = 'BOOK-' . time();
-
-            $reservation = Reservation::create([
-                'user_id' => auth()->id(),
-                'room_id' => $room->id,
-                'check_in' => $request->check_in,
-                'check_out' => $request->check_out,
-                'total_price' => $total,
-                'status' => 'pending',
-                'payment_status' => 'pending',
-                'transaction_id' => $orderId
-            ]);
-
-            $room->decrement('stock');
-
-            DB::commit();
+            return response()->json([
+                'message' => 'Booking berhasil — lanjutkan pembayaran',
+                'reservation' => new ReservationResource($reservation),
+                'payment_url' => $reservation->payment_url
+            ], 201);
 
         } catch (\Exception $e) {
-            DB::rollBack();
-            return response()->json(['message' => 'Booking gagal'], 500);
+            $code = $e->getCode() ?: 500;
+            return response()->json(['message' => $e->getMessage()], $code);
         }
-
-        // MIDTRANS CONFIG
-        \Midtrans\Config::$serverKey = config('midtrans.serverKey');
-        \Midtrans\Config::$isProduction = config('midtrans.isProduction');
-        \Midtrans\Config::$is3ds = true;
-
-        $params = [
-            'transaction_details' => [
-                'order_id' => $orderId,
-                'gross_amount' => $total,
-            ],
-            'customer_details' => [
-                'name'  => auth()->user()->name,
-                'email' => auth()->user()->email,
-            ],
-            'item_details' => [
-                [
-                    'id' => $room->id,
-                    'price' => $room->price,
-                    'quantity' => $days,
-                    'name' => $room->name,
-                ],
-            ],
-        ];
-
-        $snap = \Midtrans\Snap::createTransaction($params);
-        $paymentUrl = $snap->redirect_url;
-
-        $reservation->update([
-            'payment_url' => $paymentUrl
-        ]);
-
-        return response()->json([
-            'message' => 'Booking berhasil — lanjutkan pembayaran',
-            'reservation' => $reservation,
-            'payment_url' => $paymentUrl
-        ], 201);
     }
 
     /*

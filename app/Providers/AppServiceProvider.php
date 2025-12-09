@@ -11,7 +11,10 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->bind(
+            \App\Contracts\PaymentGateway::class,
+            \App\Services\MidtransGateway::class
+        );
     }
 
     /**
@@ -19,9 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-    //     $this->registerPolicies();
-    //     Auth::provider('users', function ($app, array $config) {
-    //         return new \Illuminate\Auth\EloquentUserProvider($app['hash'], $config['model']);
-    //     });
+        if ($this->app->environment('production')) {
+            \Illuminate\Support\Facades\URL::forceScheme('https');
+        }
     }
 }

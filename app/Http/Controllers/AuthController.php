@@ -9,23 +9,21 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Password;
 
+use App\Http\Requests\RegisterRequest;
+use App\Http\Requests\LoginRequest;
+use App\Services\AuthService;
+
 class AuthController extends Controller
 {
-    public function register(Request $request) {
-        $request->validate([
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6',
-            'role' => 'required|in:admin,staff,user'
-        ]);
+    protected $authService;
 
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => Hash::make($request->password),
-            'role' => $request->role ?? 'user',
-            'email_verification_token' => Str::random(60)
-        ]);
+    public function __construct(AuthService $authService)
+    {
+        $this->authService = $authService;
+    }
+
+    public function register(RegisterRequest $request) {
+        $user = $this->authService->register($request->validated());
 
         return response()->json([
             'message' => 'Registrasi Berhasil, silahkan Verifikasi email Anda',
@@ -33,30 +31,21 @@ class AuthController extends Controller
         ], 201);
     }
 
-    public function login(Request $request)
+    public function login(LoginRequest $request)
     {
-        $credentials = $request->validate([
-            'email' => 'required|email',
-            'password' => 'required'
-        ]);
+        try {
+            $result = $this->authService->login($request->validated());
 
-        if (! $token = auth('api')->attempt($credentials)) {
-            return response()->json(['message' => 'Email atau password salah'], 401);
+            if (!$result) {
+                return response()->json(['message' => 'Email atau password salah'], 401);
+            }
+
+            return response()->json($result);
+
+        } catch (\Exception $e) {
+             $code = $e->getCode() ?: 500;
+             return response()->json(['message' => $e->getMessage()], $code);
         }
-
-        $user = auth('api')->user();
-
-        if (!$user->email_verified_at) {
-            return response()->json([
-                'message' => 'Emsail Belum Terverifikasi!'
-            ], 403);
-        }
-
-        return response()->json([
-            'message' => 'Login berhasil',
-            'token' => $token,
-            'user' => auth('api')->user()
-        ]);
     }
 
     public function refresh()

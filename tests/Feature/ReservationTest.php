@@ -45,6 +45,13 @@ class ReservationTest extends TestCase
             'stock' => 3
         ]);
 
+        // Mock Payment Gateway
+        $this->mock(\App\Contracts\PaymentGateway::class, function ($mock) {
+            $mock->shouldReceive('generatePaymentUrl')
+                ->once()
+                ->andReturn('https://app.sandbox.midtrans.com/snap/v2/vtweb/dummy');
+        });
+
         // Request booking
         $reservationResponse = $this->withHeader('Authorization', 'Bearer ' . $token)
             ->postJson('/api/book', [
@@ -55,7 +62,7 @@ class ReservationTest extends TestCase
 
         $reservationResponse->assertStatus(201);
         $reservationResponse->assertJson([
-            'message' => 'Booking berhasil'
+            'message' => 'Booking berhasil — lanjutkan pembayaran',
         ]);
 
         // Pastikan stok kamar berkurang 1

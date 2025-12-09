@@ -22,7 +22,7 @@ class AuthTest extends TestCase
 
         $response->assertStatus(201)
             ->assertJson([
-                'message' => 'Registrasi berhasil',
+                'message' => 'Registrasi Berhasil, silahkan Verifikasi email Anda',
                 'user' => [
                     'name' => 'Test User',
                     'email' => 'test@example.com',
@@ -42,6 +42,7 @@ class AuthTest extends TestCase
         $user = User::factory()->create([
             'email' => 'login@example.com',
             'password' => bcrypt('password'),
+            'email_verified_at' => now(), // Add this to fix login 403
         ]);
 
         $response = $this->postJson('/api/login', [
@@ -86,6 +87,6 @@ class AuthTest extends TestCase
             ->postJson('/api/logout');
 
         $response->assertStatus(200)
-            ->assertJson(['message' => 'Logout berhasil']);
+            ->assertJson(['message' => 'Anda telah logout!']);
     }
 }

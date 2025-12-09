@@ -4,77 +4,106 @@ namespace App\Http\Controllers;
 
 use App\Models\Room;
 use Illuminate\Http\Request;
+use App\Http\Requests\RoomRequest;
+use App\Http\Resources\RoomResource;
+use App\Services\RoomService;
 
 class RoomController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     */
+    protected $roomService;
+
+    public function __construct(RoomService $roomService)
+    {
+        $this->roomService = $roomService;
+    }
+    /*
+    |--------------------------------------------------------------------------
+    | PUBLIC - LIST ALL ROOMS (NO LOGIN)
+    |--------------------------------------------------------------------------
+    */
+    public function publicIndex()
+    {
+        $rooms = Room::where('stock', '>', 0)->latest()->get();
+        return RoomResource::collection($rooms);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | PUBLIC - SHOW ROOM DETAIL
+    |--------------------------------------------------------------------------
+    */
+    public function show($id)
+    {
+        $room = Room::findOrFail($id);
+        return new RoomResource($room);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN & STAFF - LIST ROOMS
+    |--------------------------------------------------------------------------
+    */
     public function index()
     {
-        return Room::all();
+        $rooms = Room::latest()->get();
+        return RoomResource::collection($rooms);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     */
-    public function store(Request $request)
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN & STAFF - STORE ROOM
+    |--------------------------------------------------------------------------
+    */
+    public function store(RoomRequest $request)
     {
-        $request->validate([
-            'name' => 'required',
-            'price' => 'required|integer',
-            'stock' => 'required|integer',
-            'image' => 'nullable|image|max:2048'
-        ]);
+        try {
+            $room = $this->roomService->createRoom($request->validated());
 
-        $data = $request->all();
-
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('rooms', 'public');
-            $data['image'] = $path;
+            return response()->json([
+                'message' => 'Kamar berhasil ditambahkan',
+                'data' => new RoomResource($room)
+            ], 201);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
         }
-
-        $room = Room::create($data);
-        return response()->json($room, 201);
     }
 
-    /**
-     * Display the specified resource.
-     */
-    public function show(string $id)
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN & STAFF - UPDATE ROOM
+    |--------------------------------------------------------------------------
+    */
+    public function update(RoomRequest $request, $id)
     {
-        return Room::findOrFail($id);
-    }
+        try {
+            $room = Room::findOrFail($id);
+            $room = $this->roomService->updateRoom($room, $request->validated());
 
-    /**
-     * Update the specified resource in storage.
-     */
-    public function update(Request $request, string $id)
-    {
-        $request->validate([
-            'image' => 'nullable|image|max:2048'
-        ]);
-
-        $room = Room::findOrFail($id);
-
-        $data = $request->all();
-
-        if ($request->hasFile('image')) {
-            $path = $request->file('image')->store('rooms', 'public');
-            $data['image'] = $path;
+            return response()->json([
+                'message' => 'Kamar berhasil diperbarui',
+                'data' => new RoomResource($room)
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
         }
-
-        $room->update($data);
-        return response()->json($room);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     */
-    public function destroy(string $id)
+    /*
+    |--------------------------------------------------------------------------
+    | ADMIN & STAFF - DELETE ROOM
+    |--------------------------------------------------------------------------
+    */
+    public function destroy($id)
     {
-        $room = Room::findOrfail($id);
-        $room->delete();
-        return response()->json(['message' => 'Room deleted']);
+        try {
+            $room = Room::findOrFail($id);
+            $this->roomService->deleteRoom($room);
+
+            return response()->json([
+                'message' => 'Kamar berhasil dihapus'
+            ]);
+        } catch (\Exception $e) {
+            return response()->json(['message' => $e->getMessage()], 500);
+        }
     }
 }

@@ -3,42 +3,54 @@
 namespace Tests\Unit;
 
 use App\Http\Controllers\AuthController;
+use App\Http\Requests\RegisterRequest;
 use App\Models\User;
-use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Validator;
+use App\Services\AuthService;
+use Mockery;
 use Tests\TestCase;
 
 class AuthControllerTest extends TestCase
 {
-    public function test_register_method_creates_user()
+    public function test_register_delegates_to_auth_service()
     {
-        $controller = new AuthController();
-
-        $request = new Request([
+        // Mock Data
+        $userData = [
             'name' => 'Unit Test',
             'email' => 'unit@example.com',
             'password' => 'password',
             'role' => 'staff'
-        ]);
+        ];
 
-        // tambahkan validasi manual untuk meniru lifecycle Laravel
-        $validator = Validator::make($request->all(), [
-            'name' => 'required|string',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6',
-            'role' => 'in:admin,staff,user'
-        ]);
+        $user = new User($userData);
 
-        $this->assertFalse($validator->fails());
+        // Mock Service
+        $authService = Mockery::mock(AuthService::class);
+        $authService->shouldReceive('register')
+            ->once()
+            ->with($userData)
+            ->andReturn($user);
 
+        // Mock Request
+        $request = Mockery::mock(RegisterRequest::class);
+        $request->shouldReceive('validated')
+            ->once()
+            ->andReturn($userData);
+
+        // Instantiate Controller
+        $controller = new AuthController($authService);
+
+        // Execute
         $response = $controller->register($request);
         $data = $response->getData(true);
 
-        $this->assertEquals('Registrasi berhasil', $data['message']);
+        // Assert
+        $this->assertEquals('Registrasi Berhasil, silahkan Verifikasi email Anda', $data['message']);
         $this->assertEquals('staff', $data['user']['role']);
+    }
 
-        $this->assertDatabaseHas('users', [
-            'email' => 'unit@example.com'
-        ]);
+    protected function tearDown(): void
+    {
+        Mockery::close();
+        parent::tearDown();
     }
 }
